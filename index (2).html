@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Pixel Land Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #333; font-family: sans-serif; }
+        #ui { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 8px; pointer-events: auto; }
+        canvas { display: block; cursor: crosshair; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div>所持金: <span id="money">1000</span> G</div>
+    <input type="color" id="colorPicker" value="#ff0000">
+    <p><small>移動: WASD / 矢印キー<br>クリック: 購入または描画</small></p>
+</div>
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const moneyDisplay = document.getElementById('money');
+    const colorPicker = document.getElementById('colorPicker');
+
+    // 世界の設定
+    const WORLD_SIZE = 100; // 100x100のドット
+    const TILE_SIZE = 40;
+    const PRICE_PER_TILE = 50;
+
+    let cameraX = 0, cameraY = 0;
+    let money = 1000;
+
+    // ドットのデータ構造: grid[x][y] = { color, owner }
+    const grid = Array.from({ length: WORLD_SIZE }, () =>
+        Array.from({ length: WORLD_SIZE }, () => ({ color: '#ffffff', owner: null }))
+    );
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // 入力処理
+    window.addEventListener('keydown', (e) => {
+        const speed = 20;
+        if (e.key === 'w' || e.key === 'ArrowUp') cameraY += speed;
+        if (e.key === 's' || e.key === 'ArrowDown') cameraY -= speed;
+        if (e.key === 'a' || e.key === 'ArrowLeft') cameraX += speed;
+        if (e.key === 'd' || e.key === 'ArrowRight') cameraX -= speed;
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+        const x = Math.floor((e.clientX - cameraX) / TILE_SIZE);
+        const y = Math.floor((e.clientY - cameraY) / TILE_SIZE);
+
+        if (x >= 0 && x < WORLD_SIZE && y >= 0 && y < WORLD_SIZE) {
+            const tile = grid[x][y];
+            if (!tile.owner) {
+                if (money >= PRICE_PER_TILE) {
+                    money -= PRICE_PER_TILE;
+                    tile.owner = 'me';
+                    tile.color = colorPicker.value;
+                    moneyDisplay.textContent = money;
+                } else {
+                    alert('お金が足りません！');
+                }
+            } else if (tile.owner === 'me') {
+                tile.color = colorPicker.value;
+            }
+        }
+    });
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let x = 0; x < WORLD_SIZE; x++) {
+            for (let y = 0; y < WORLD_SIZE; y++) {
+                const screenX = x * TILE_SIZE + cameraX;
+                const screenY = y * TILE_SIZE + cameraY;
+
+                // 画面内のみ描画
+                if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
+                    ctx.fillStyle = grid[x][y].color;
+                    ctx.fillRect(screenX, screenY, TILE_SIZE - 1, TILE_SIZE - 1);
+                    
+                    if (!grid[x][y].owner) {
+                        ctx.strokeStyle = '#ccc';
+                        ctx.strokeRect(screenX, screenY, TILE_SIZE - 1, TILE_SIZE - 1);
+                    }
+                }
+            }
+        }
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+</script>
+</body>
+</html>
